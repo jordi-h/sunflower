@@ -1,0 +1,17 @@
+.PIC16F1789-I_P :1 ;PIC16F1789-I/P, 8 bit PIC Microcontroller 32MHz 16384 words Flash, 2048 B RAM, USB I2C LIN 40-Pin PDIP
+PIC16F1789-I_P
+*STM IC
+*NGS
+*PLB 1="VPP/'MCLR'/RE3" 2="RAO" 3="RA1" 4="RA2" 5="RA3" 6="RA4" 7="RA5" 8="REO" 9="RE1" 10="RE2" 11="VDD_1" 12="VSS_1" 13="RA7" 14="RA6" 15="RCO" 16="RC1" 17="RC2" 18="RC3" 19="RDO" 20="RD1" 21="RD2" 22="RD3" 23="RC4" 24="RC5" 25="RC6" 26="RC7" 27="RD4" 28="RD5" 29="RD6" 30="RD7" 31="VSS_2" 32="VDD_2" 33="RBO" 34="RB1" 35="RB2" 36="RB3" 37="RB4" 38="RB5" 39="RB6/ICSPCLK" 40="RB7ICSPDAT"
+*MXP 40
+*DFN PIC16F1789-I_P
+~!Manufacturer_Name (Microchip)
+~!Manufacturer_Part_Number (PIC16F1789-I/P)
+~!Mouser Part Number (579-PIC16F1789-I/P)
+~!Link Mouser Price/Stock (https://www.mouser.co.uk/ProductDetail/Microchip-Technology-Atmel/PIC16F1789-I-P?qs=7DhvGWG6CtcNtC1kjOxGJQ%3D%3D)
+~!Arrow Part Number (PIC16F1789-I/P)
+~!Link Arrow Price/Stock (https://www.arrow.com/en/products/pic16f1789-ip/microchip-technology?region=nac)
+~!Link Datasheet (https://datasheet.datasheetarchive.com/originals/distributors/Datasheets-DGA25/1726709.pdf)
+~!Height (-)
+PIC16F1789-I_P
+1.1!U 2.1!U 3.1!U 4.1!U 5.1!U 6.1!U 7.1!U 8.1!U 9.1!U 10.1!U 11.1!P 12.1!G 13.1!U 14.1!U 15.1!U 16.1!U 17.1!U 18.1!U 19.1!U 20.1!U 21.1!U 22.1!U 23.1!U 24.1!U 25.1!U 26.1!U 27.1!U 28.1!U 29.1!U 30.1!U 31.1!G 32.1!P 33.1!U 34.1!U 35.1!U 36.1!U 37.1!U 38.1!U 39.1!I 40.1!I 

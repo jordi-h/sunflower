@@ -1,0 +1,9 @@
+Manufacturer=Microchip
+PartNumber=PIC16F1789-I/P
+PartCategory=Integrated Circuit
+PackageCategory=Other
+PinCount=40
+Version=1.2
+Released=2015-12-03 16:27:57
+Downloaded=2022-05-19 23:01:24
+3D=N
