@@ -20,38 +20,39 @@ isr_vec:
         goto    isr
 
 PSECT code
-start:  call    init_clock      ; 32MHz oscillator initialization 
-        call    init_adc
-        call    init_portb
+start:  call    init_clock      ; 1MHz oscillator initialization 
+        call    init_adc        ; ADC initialisation for LDRs
+        call    init_portb      ; PORTB initialisation for led
         call    init_data
         call    init_timer_interrupt
+        call    init_pwm
         clrf    BSR
         goto    loop            ; enter event loop
 
 init_clock:
         banksel OSCCON
-        movlw   0xf8    ; PLL enable, 32MHz HF, FOSC bits in config
+        movlw   0x58            ; 1MHz HF, FOSC bits in config
         movwf   OSCCON
         return
 
 init_adc:
-        banksel PORTA   ; PORTA initialization
+        banksel PORTA           ; PORTA initialization
         clrf    PORTA
         banksel LATA
         clrf    LATA
         banksel TRISA
-        clrf    TRISA   ; set RA<0:3> to input
+        clrf    TRISA           ; set RA<0:3> to input
         banksel ANSELA
         movlw   0xff
-        movwf   ANSELA  ; set RA<0:3> to analog
+        movwf   ANSELA          ; set RA<0:3> to analog
         banksel WPUA
         movlw   0x00
-        movwf   WPUE    ; weak pull-ups disabled
+        movwf   WPUE            ; weak pull-ups disabled
         banksel ADCON2
         movlw   0x0f
-        movwf   ADCON2  ; CHSN: single-ended signal
+        movwf   ADCON2          ; CHSN: single-ended signal
         movlw   0xf0
-        movwf   ADCON1  ; Reference setting + FRC clock (see p.171)
+        movwf   ADCON1          ; Reference setting + FRC clock (see p.171)
         return
 
 init_portb:
@@ -66,7 +67,7 @@ init_portb:
         return
 
 init_data:
-        clrf    ready   ; clear ready flag
+        clrf    ready           ; clear ready flag
         call    init_counter
         return
 
@@ -88,8 +89,40 @@ init_timer_interrupt:
         bsf     INTCON, 7
         return
 
+init_pwm:
+        banksel PORTC
+        clrf    PORTC
+        banksel LATC
+        clrf    LATC
+        banksel TRISC
+        movlw   0xff
+        movf    TRISC           ; set RC0->RC7 to output
+        banksel PR2
+        movlw   0x4e
+        movwf   PR2             ; pwm period (p.228) of 20ms
+        banksel CCP1CON
+        bsf     CCP1CON, 2      ; pwm mode
+        bsf     CCP1CON, 3
+        movlw   0x08         
+        movwf   CCPR1L          ; 0x04 to turn left, 0x08 to turn right
+        bcf     CCP1CON, 4
+        bcf     CCP1CON, 5
+        banksel PIR1            ; timer 2 init and start
+        bcf     PIR1, 1
+        bsf     T2CON, 0        ; prescaler de 1:64
+        bsf     T2CON, 1
+        bsf     T2CON, 2        ; Timer 2 on
+        ; btfss   PIR1, 1 ; clear flag après
+        ; goto    $-1
+        ; bcf     PIR1, 1
+        banksel TRISC
+        clrf    TRISC
+        return
+
 loop:   btfsc   ready, 0
-	call    computation
+	call    computation     ; computations for LDRs
+        btfsc   servo, 0
+        call    pwm             ; turn servomotor
         goto    loop
 
 computation:
@@ -159,6 +192,15 @@ led_off:
         movwf   PORTB
         return
 
+pwm:
+        clrf    servo
+        banksel CCP1CON
+        movlw   0x08            
+        movwf   CCPR1L          ; 0x04 to turn left, 0x08 to turn right
+        bcf     CCP1CON, 4
+        bcf     CCP1CON, 5
+        return
+
 delay:
         movlw   0xcb
         movwf   delay_h
@@ -171,9 +213,19 @@ delay_loop:
         goto    delay_loop
         return
 
+;;;;;;;;;;;;;;;;;;;;;
+; INTERRUPT ROUTINE ;
+;;;;;;;;;;;;;;;;;;;;;
 isr:
-        btfss   INTCON, 2
+        btfsc   INTCON, 2
+        goto    t0_code
+        banksel PIR1
+        btfss   PIR1, 1
         retfie
+        goto    t2_code
+        retfie
+
+t0_code:
         incfsz  counter_l, f
         retfie
         incfsz  counter_h, f
@@ -184,6 +236,13 @@ isr:
         movwf   ready
         call    init_counter
         bcf     INTCON, 2
+        retfie
+
+t2_code:
+        banksel PIR1
+        movlw   0x01
+        movwf   servo
+        bcf     PIR1, 1
         retfie
 
 	end	reset_vec
