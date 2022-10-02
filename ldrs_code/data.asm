@@ -6,8 +6,6 @@
 PSECT udata_bank0
 ready:                  ; semaphore used to know if the timer interrupt has occured
         DS      1
-servo:
-        DS      1
 counter_l:              ; last 8 bits of 24-bit counter 
         DS      1
 counter_h:              ; middle 8 bits of 24-bit counter
@@ -33,8 +31,4 @@ ldr2l:
 ldr3h:                  ; upper ldr
         DS      1
 ldr3l:
-        DS      1
-servo_180:              ; servo vertical
-        DS      1
-temp:                   ; temporaty register
         DS      1
