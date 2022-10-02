@@ -6,10 +6,57 @@
  * 
  */
 
-PROCESSOR 16F1789 ; used processor definition
+PROCESSOR 16F1789       ; used processor definition
 
-#include "config.asm"
-#include "data.asm"
+#include <xc.inc>
+
+CONFIG  FOSC = INTOSC   ; INTOSC oscillator
+CONFIG  WDTE = OFF      ; Watchdog Timer disabled
+CONFIG  PWRTE = ON      ; Power-up Timer enabled
+CONFIG  MCLRE = ON      ; MCLR/VPP pin function is MCLR
+CONFIG  CP = off        ; Flash Program Memory Code Protection off
+CONFIG  CPD = OFF       ; Data Memory Code Protection off
+CONFIG  BOREN = ON      ; Brown-out Reset enabled
+CONFIG  CLKOUTEN = OFF  ; Clock Out disabled
+CONFIG  IESO = ON       ; Internal/External Switchover enabled
+CONFIG  FCMEN = ON      ; Fail-Safe Clock Monitor enabled
+CONFIG  WRT = OFF       ; Flash Memory Self-Write Protection off
+CONFIG  VCAPEN = OFF    ; Voltage Regulator Capacitor disabled
+CONFIG  PLLEN = ON      ; 4x PLL enabled
+CONFIG  STVREN = ON     ; Stack Overflow/Underflow Reset enabled
+CONFIG  BORV = LO       ; Brown-out Reset Voltage trip point low
+CONFIG  LPBOR = OFF     ; Low Power Brown-Out Reset disabled
+CONFIG  LVP = OFF       ; Low-Voltage Programming disabled
+
+PSECT udata_bank0
+ready:                  ; semaphore used to know if the timer interrupt has occured
+        DS      1
+counter_l:              ; last 8 bits of 24-bit counter 
+        DS      1
+counter_h:              ; middle 8 bits of 24-bit counter
+        DS      1       
+counter_hh:             ; first 8 bits of 24-bit counter
+        DS      1
+delay_l:                ; last 8 bits of the acquisition delay needed after enabling the adc on a channel
+        DS      1
+delay_h:                ; first 8 bits of the acquisition delay needed after enabling the adc on a channel
+        DS      1
+ldr0h:                  ; left ldr
+        DS      1
+ldr0l:
+        DS      1
+ldr1h:                  ; right ldr
+        DS      1
+ldr1l:                  
+        DS      1
+ldr2h:                  ; lower ldr
+        DS      1
+ldr2l:
+        DS      1
+ldr3h:                  ; upper ldr
+        DS      1
+ldr3l:
+        DS      1
 
 PSECT reset_vec, class = CODE, delta = 2  
 reset_vec: 
@@ -30,28 +77,28 @@ start:  call    init_clock      ; 32MHz oscillator initialization
 
 init_clock:
         banksel OSCCON
-        movlw   0xf8    ; PLL enable, 32MHz HF, FOSC bits in config
+        movlw   0xf8            ; PLL enable, 32MHz HF, FOSC bits in config
         movwf   OSCCON
         return
 
 init_adc:
-        banksel PORTA   ; PORTA initialization
+        banksel PORTA           ; PORTA initialization
         clrf    PORTA
         banksel LATA
         clrf    LATA
         banksel TRISA
-        clrf    TRISA   ; set RA<0:3> to input
+        clrf    TRISA           ; set RA<0:3> to input
         banksel ANSELA
         movlw   0xff
-        movwf   ANSELA  ; set RA<0:3> to analog
+        movwf   ANSELA          ; set RA<0:3> to analog
         banksel WPUA
         movlw   0x00
-        movwf   WPUE    ; weak pull-ups disabled
+        movwf   WPUE            ; weak pull-ups disabled
         banksel ADCON2
         movlw   0x0f
-        movwf   ADCON2  ; CHSN: single-ended signal
+        movwf   ADCON2          ; CHSN: single-ended signal
         movlw   0xf0
-        movwf   ADCON1  ; Reference setting + FRC clock (see p.171)
+        movwf   ADCON1          ; Reference setting + FRC clock (see p.171)
         return
 
 init_portb:
@@ -66,7 +113,7 @@ init_portb:
         return
 
 init_data:
-        clrf    ready   ; clear ready flag
+        clrf    ready           ; clear ready flag
         call    init_counter
         return
 
@@ -102,7 +149,7 @@ computation:
 ldr0:
         banksel ADCON0
         movlw   0x81
-        movwf   ADCON0  ; ADC enabled on channel AN0 with 10-bit result
+        movwf   ADCON0          ; ADC enabled on channel AN0 with 10-bit result
         call    delay
         bsf     ADCON0, 1
         btfsc   ADCON0, 1
@@ -117,7 +164,7 @@ ldr0:
 ldr1:
         banksel ADCON0
         movlw   0x85
-        movwf   ADCON0  ; ADC enabled on channel AN1 with 10-bit result
+        movwf   ADCON0          ; ADC enabled on channel AN1 with 10-bit result
         call    delay
         bsf     ADCON0, 1
         btfsc   ADCON0, 1

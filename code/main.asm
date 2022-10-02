@@ -20,7 +20,7 @@ isr_vec:
         goto    isr
 
 PSECT code
-start:  call    init_clock      ; 1MHz oscillator initialization 
+start:  call    init_clock      ; 32MHz oscillator initialization 
         call    init_adc        ; ADC initialisation for LDRs
         call    init_portb      ; PORTB initialisation for led
         call    init_data
@@ -31,7 +31,7 @@ start:  call    init_clock      ; 1MHz oscillator initialization
 
 init_clock:
         banksel OSCCON
-        movlw   0x58            ; 1MHz HF, FOSC bits in config
+        movlw   0xf8            ; PLL enable, 32MHz HF, FOSC bits in config
         movwf   OSCCON
         return
 
@@ -100,12 +100,12 @@ init_pwm:
         movlw   0xff
         movf    TRISC           ; set RC0->RC7 to output
         banksel PR2
-        movlw   0x4e
+        movlw   0x9f
         movwf   PR2             ; pwm period (p.228) of 20ms
         banksel CCP1CON
         bsf     CCP1CON, 2      ; pwm mode
         bsf     CCP1CON, 3
-        movlw   0x1b
+        movlw   0x40
         movwf   servo_180       ; 0x09 (bcf, bcf) to turn left, 0x27 (bsf, bsf) to turn right, 0x1b (bsf, bsf) to turn middle
         movf    servo_180, 0
         movwf   temp
@@ -124,8 +124,8 @@ init_pwm:
         iorwf   CCP1CON, 1
         banksel PIR1            ; timer 2 init and start
         bcf     PIR1, 1
-        bsf     T2CON, 0        ; prescaler de 1:64
-        bsf     T2CON, 1
+        bcf     T2CON, 0        ; prescaler de 1:1
+        bcf     T2CON, 1
         bsf     T2CON, 2        ; Timer 2 on
         ; btfss   PIR1, 1 ; clear flag after
         ; goto    $-1
@@ -199,16 +199,16 @@ turn_right:
         banksel PORTB
         movlw   0xff
         movwf   PORTB
-        incf    servo_180, 1
-        call    pwm
+        ;incf    servo_180, 1
+        ;call    pwm
         return
 
 turn_left:
         banksel PORTB
         movlw   0x00
         movwf   PORTB
-        decf    servo_180, 1
-        call    pwm
+        ;decf    servo_180, 1
+        ;call    pwm
         return
 
 pwm:
@@ -265,6 +265,8 @@ t0_code:
         retfie
 
 t2_code:
+        banksel TRISC
+        clrf    TRISC
         banksel PIR1
         movlw   0x01
         movwf   servo
