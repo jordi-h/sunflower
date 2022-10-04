@@ -10,23 +10,23 @@ PROCESSOR 16F1789       ; used processor definition
 
 #include <xc.inc>
 
-CONFIG  FOSC = INTOSC   ; INTOSC oscillator
-CONFIG  WDTE = OFF      ; Watchdog Timer disabled
-CONFIG  PWRTE = ON      ; Power-up Timer enabled
-CONFIG  MCLRE = ON      ; MCLR/VPP pin function is MCLR
-CONFIG  CP = off        ; Flash Program Memory Code Protection off
-CONFIG  CPD = OFF       ; Data Memory Code Protection off
-CONFIG  BOREN = ON      ; Brown-out Reset enabled
-CONFIG  CLKOUTEN = OFF  ; Clock Out disabled
-CONFIG  IESO = ON       ; Internal/External Switchover enabled
-CONFIG  FCMEN = ON      ; Fail-Safe Clock Monitor enabled
-CONFIG  WRT = OFF       ; Flash Memory Self-Write Protection off
-CONFIG  VCAPEN = OFF    ; Voltage Regulator Capacitor disabled
-CONFIG  PLLEN = ON      ; 4x PLL enabled
-CONFIG  STVREN = ON     ; Stack Overflow/Underflow Reset enabled
-CONFIG  BORV = LO       ; Brown-out Reset Voltage trip point low
-CONFIG  LPBOR = OFF     ; Low Power Brown-Out Reset disabled
-CONFIG  LVP = OFF       ; Low-Voltage Programming disabled
+CONFIG  FOSC = INTOSC         ; INTOSC oscillator
+CONFIG  WDTE = OFF            ; Watchdog Timer disabled
+CONFIG  PWRTE = ON            ; Power-up Timer enabled
+CONFIG  MCLRE = ON            ; MCLR/VPP pin function is MCLR
+CONFIG  CP = OFF              ; Flash Program Memory Code Protection off
+CONFIG  CPD = OFF             ; Data Memory Code Protection off
+CONFIG  BOREN = ON            ; Brown-out Reset enabled
+CONFIG  CLKOUTEN = OFF        ; Clock Out disabled
+CONFIG  IESO = ON             ; Internal/External Switchover enabled
+CONFIG  FCMEN = ON            ; Fail-Safe Clock Monitor enabled
+CONFIG  WRT = OFF             ; Flash Memory Self-Write Protection off
+CONFIG  VCAPEN = OFF          ; Voltage Regulator Capacitor disabled
+;CONFIG  PLLEN = ON            ; 4x PLL enabled
+CONFIG  STVREN = ON           ; Stack Overflow/Underflow Reset enabled
+CONFIG  BORV = LO             ; Brown-out Reset Voltage trip point low
+CONFIG  LPBOR = OFF           ; Low Power Brown-Out Reset disabled
+CONFIG  LVP = OFF             ; Low-Voltage Programming disabled
 
 PSECT udata_bank0
 ready:                  ; semaphore used to know if the timer interrupt has occured
@@ -67,7 +67,7 @@ isr_vec:
         goto    isr
 
 PSECT code
-start:  call    init_clock      ; 32MHz oscillator initialization 
+start:  call    init_clock      ; 2MHz oscillator initialization 
         call    init_adc
         call    init_portb
         call    init_data
@@ -77,7 +77,7 @@ start:  call    init_clock      ; 32MHz oscillator initialization
 
 init_clock:
         banksel OSCCON
-        movlw   0xf8            ; PLL enable, 32MHz HF, FOSC bits in config
+        movlw   0x60            ; 2MHz HF, FOSC bits in config
         movwf   OSCCON
         return
 
@@ -207,9 +207,10 @@ led_off:
         return
 
 delay:
-        movlw   0xcb
+        movlw   0xff
         movwf   delay_h
-        clrf    delay_l
+        movlw   0xff
+        movwf   delay_l
 
 delay_loop:
         incfsz  delay_l, f
