@@ -8,8 +8,61 @@
 
 PROCESSOR 16F1789 ; used processor definition
 
-#include "config.asm"
-#include "data.asm"
+#include <xc.inc>
+
+CONFIG  FOSC = INTOSC         ; INTOSC oscillator
+CONFIG  WDTE = OFF            ; Watchdog Timer disabled
+CONFIG  PWRTE = ON            ; Power-up Timer enabled
+CONFIG  MCLRE = ON            ; MCLR/VPP pin function is MCLR
+CONFIG  CP = OFF              ; Flash Program Memory Code Protection off
+CONFIG  CPD = OFF             ; Data Memory Code Protection off
+CONFIG  BOREN = ON            ; Brown-out Reset enabled
+CONFIG  CLKOUTEN = OFF        ; Clock Out disabled
+CONFIG  IESO = ON             ; Internal/External Switchover enabled
+CONFIG  FCMEN = ON            ; Fail-Safe Clock Monitor enabled
+CONFIG  WRT = OFF             ; Flash Memory Self-Write Protection off
+CONFIG  VCAPEN = OFF          ; Voltage Regulator Capacitor disabled
+;CONFIG  PLLEN = ON            ; 4x PLL enabled
+CONFIG  STVREN = ON           ; Stack Overflow/Underflow Reset enabled
+CONFIG  BORV = LO             ; Brown-out Reset Voltage trip point low
+CONFIG  LPBOR = OFF           ; Low Power Brown-Out Reset disabled
+CONFIG  LVP = OFF             ; Low-Voltage Programming disabled
+
+PSECT udata_bank0
+ready:                  ; semaphore used to know if the timer interrupt has occured
+        DS      1
+servo:
+        DS      1
+counter_l:              ; last 8 bits of 24-bit counter 
+        DS      1
+counter_h:              ; middle 8 bits of 24-bit counter
+        DS      1       
+counter_hh:             ; first 8 bits of 24-bit counter
+        DS      1
+delay_l:                ; last 8 bits of the acquisition delay needed after enabling the adc on a channel
+        DS      1
+delay_h:                ; first 8 bits of the acquisition delay needed after enabling the adc on a channel
+        DS      1
+ldr0h:                  ; left ldr
+        DS      1
+ldr0l:
+        DS      1
+ldr1h:                  ; right ldr
+        DS      1
+ldr1l:                  
+        DS      1
+ldr2h:                  ; lower ldr
+        DS      1
+ldr2l:
+        DS      1
+ldr3h:                  ; upper ldr
+        DS      1
+ldr3l:
+        DS      1
+servo_180:              ; servo vertical
+        DS      1
+temp:                   ; temporaty register
+        DS      1
 
 PSECT reset_vec, class = CODE, delta = 2  
 reset_vec: 
@@ -20,7 +73,7 @@ isr_vec:
         goto    isr
 
 PSECT code
-start:  call    init_clock      ; 32MHz oscillator initialization 
+start:  call    init_clock      ; 2MHz oscillator initialization 
         call    init_adc        ; ADC initialisation for LDRs
         call    init_portb      ; PORTB initialisation for led
         call    init_data
@@ -31,7 +84,7 @@ start:  call    init_clock      ; 32MHz oscillator initialization
 
 init_clock:
         banksel OSCCON
-        movlw   0xf8            ; PLL enable, 32MHz HF, FOSC bits in config
+        movlw   0x60            ; 2MHz HF, FOSC bits in config
         movwf   OSCCON
         return
 
@@ -69,7 +122,7 @@ init_portb:
 init_data:
         clrf    ready           ; clear ready flag
         call    init_counter
-        movlw   0x1b             ; 0x10 (bcf, bcf) to turn left, 0x27 (bsf, bsf) to turn right, 0x1b (bsf, bsf) to turn middle
+        movlw   0x1f            ; 
         movwf   servo_180
         return
 
@@ -100,13 +153,13 @@ init_pwm:
         movlw   0xff
         movf    TRISC           ; set RC0->RC7 to output
         banksel PR2
-        movlw   0x9f
+        movlw   0x9b
         movwf   PR2             ; pwm period (p.228) of 20ms
         banksel CCP1CON
         bsf     CCP1CON, 2      ; pwm mode
         bsf     CCP1CON, 3
-        movlw   0x40
-        movwf   servo_180       ; 0x09 (bcf, bcf) to turn left, 0x27 (bsf, bsf) to turn right, 0x1b (bsf, bsf) to turn middle
+        movlw   0x30
+        movwf   servo_180       ; 
         movf    servo_180, 0
         movwf   temp
         lsrf    temp, 1
@@ -124,8 +177,8 @@ init_pwm:
         iorwf   CCP1CON, 1
         banksel PIR1            ; timer 2 init and start
         bcf     PIR1, 1
-        bcf     T2CON, 0        ; prescaler de 1:1
-        bcf     T2CON, 1
+        bsf     T2CON, 0        ; prescaler de 1:64
+        bsf     T2CON, 1
         bsf     T2CON, 2        ; Timer 2 on
         ; btfss   PIR1, 1 ; clear flag after
         ; goto    $-1
@@ -200,7 +253,7 @@ turn_right:
         movlw   0xff
         movwf   PORTB
         ;incf    servo_180, 1
-        ;call    pwm
+        ; call    pwm
         return
 
 turn_left:
@@ -228,12 +281,15 @@ pwm:
         lslf    temp, 1
         lslf    temp, 0
         iorwf   CCP1CON, 1
+        banksel TRISC
+        clrf    TRISC
         return
 
 delay:
-        movlw   0xfe    ;0xcb
+        movlw   0xff
         movwf   delay_h
-        clrf    delay_l
+        movlw   0xff
+        movwf   delay_l
 
 delay_loop:
         incfsz  delay_l, f
