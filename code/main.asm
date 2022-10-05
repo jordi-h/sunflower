@@ -82,6 +82,7 @@ start:  call    init_clock      ; 2MHz oscillator initialization
         clrf    BSR
         goto    loop            ; enter event loop
 
+; Initialization
 init_clock:
         banksel OSCCON
         movlw   0x60            ; 2MHz HF, FOSC bits in config
@@ -145,6 +146,7 @@ init_timer_interrupt:
         return
 
 init_pwm:
+        ; 5-6 initialization steps page 228
         banksel PORTC
         clrf    PORTC
         banksel LATC
@@ -158,8 +160,9 @@ init_pwm:
         banksel CCP1CON
         bsf     CCP1CON, 2      ; pwm mode
         bsf     CCP1CON, 3
-        movlw   0x30
-        movwf   servo_180       ; 
+        movlw   0x30            ; REMOVE: is it working without it (cfr init_data function assigning another value)
+        movwf   servo_180
+        ; Put servo_180's value in the right PWM register
         movf    servo_180, 0
         movwf   temp
         lsrf    temp, 1
@@ -175,11 +178,13 @@ init_pwm:
         lslf    temp, 1
         lslf    temp, 0
         iorwf   CCP1CON, 1
+        ; end
         banksel PIR1            ; timer 2 init and start
         bcf     PIR1, 1
         bsf     T2CON, 0        ; prescaler de 1:64
         bsf     T2CON, 1
         bsf     T2CON, 2        ; Timer 2 on
+        ; 6th  step (not mandatory)
         ; btfss   PIR1, 1 ; clear flag after
         ; goto    $-1
         ; bcf     PIR1, 1
@@ -187,19 +192,27 @@ init_pwm:
         clrf    TRISC
         return
 
-loop:   btfsc   ready, 0
+
+; Main code
+loop:   btfsc   ready, 0        ; Check ready every XX seconds
 	call    computation     ; computations for LDRs
-        ; btfsc   servo, 0
-        ; call    pwm             ; turn servomotor
+        ; btfsc   servo, 0      ; Check if servomotor has to move
+        ; call    pwm           ; turn servomotor
         goto    loop
 
 computation:
         clrf    ready
-        call    ldr0
-        call    ldr1
-        call    difference_h
+        ; Vertical (180) servomotor
+        call    ldr0            ; Get LDR value (down)
+        call    ldr1            ; Get LDR value (up)
+        call    difference_h    ; Get vertical servomotor's direction
+        ; Horizontal (360) servomotor
+        ; call    ldr0            ; Get LDR value (left)
+        ; call    ldr1            ; Get LDR value (right)
+        ; call    difference_h    ; Get horizontal servomotor's direction
         return
 
+; Getters
 ldr0:
         banksel ADCON0
         movlw   0x81
@@ -230,29 +243,12 @@ ldr1:
         movwf   ldr1l
         return
 
-difference_h:
-        movf    ldr0h, 0
-        subwf   ldr1h
-        btfsc   STATUS, 2       ; enter if Z = 1 (equal)
-        goto    difference_l
-        btfsc   STATUS, 0       ; enter if ldr0 > ldr1
-        goto    turn_left
-        goto    turn_right
-        
-difference_l:
-        movf    ldr0l, 0
-        subwf   ldr1l
-        btfsc   STATUS, 2       ; enter if Z = 1 (equal)
-        goto    turn_left
-        btfsc   STATUS, 0       ; enter if ldr0 > ldr1
-        goto    turn_left
-        goto    turn_right
-
+; Movers
 turn_right:
         banksel PORTB
         movlw   0xff
         movwf   PORTB
-        ;incf    servo_180, 1
+        ; incf    servo_180, 1  ; REMOVE: empirical testing (maybe +5)
         ; call    pwm
         return
 
@@ -260,8 +256,8 @@ turn_left:
         banksel PORTB
         movlw   0x00
         movwf   PORTB
-        ;decf    servo_180, 1
-        ;call    pwm
+        ; decf    servo_180, 1 ; REMOVE: empirical testing (maybe -5)
+        ; call    pwm
         return
 
 pwm:
@@ -285,6 +281,25 @@ pwm:
         clrf    TRISC
         return
 
+; Utility functions
+difference_h:
+        movf    ldr0h, 0
+        subwf   ldr1h
+        btfsc   STATUS, 2       ; enter if Z = 1 (equal)
+        goto    difference_l    ; Call difference_l if equal
+        btfsc   STATUS, 0       ; enter if ldr0 > ldr1
+        goto    turn_left
+        goto    turn_right
+        
+difference_l:
+        movf    ldr0l, 0
+        subwf   ldr1l
+        btfsc   STATUS, 2       ; enter if Z = 1 (equal)
+        goto    turn_left       ; REMOVE: We shouldn't move here
+        btfsc   STATUS, 0       ; enter if ldr0 > ldr1
+        goto    turn_left
+        goto    turn_right
+
 delay:
         movlw   0xff
         movwf   delay_h
@@ -298,6 +313,7 @@ delay_loop:
         goto    delay_loop
         return
 
+; Interrupt service routine
 isr:
         btfsc   INTCON, 2
         goto    t0_code
