@@ -31,8 +31,6 @@ CONFIG  LVP = OFF             ; Low-Voltage Programming disabled
 PSECT udata_bank0
 ready:                  ; semaphore used to know if the timer interrupt has occured
         DS      1
-servo:
-        DS      1
 counter_l:              ; last 8 bits of 24-bit counter 
         DS      1
 counter_h:              ; middle 8 bits of 24-bit counter
@@ -59,7 +57,7 @@ ldr3h:                  ; upper ldr
         DS      1
 ldr3l:
         DS      1
-servo_180:              ; servo vertical
+servov:              ; servo vertical
         DS      1
 temp:                   ; temporaty register
         DS      1
@@ -121,10 +119,11 @@ init_portb:
         return
 
 init_data:
+        banksel ready
         clrf    ready           ; clear ready flag
         call    init_counter
-        movlw   0x1f            ; 
-        movwf   servo_180
+        ;movlw   0x50            ; 
+        ;movwf   servov
         return
 
 init_counter:
@@ -161,22 +160,26 @@ init_pwm:
         bsf     CCP1CON, 2      ; pwm mode
         bsf     CCP1CON, 3
         movlw   0x30            ; REMOVE: is it working without it (cfr init_data function assigning another value)
-        movwf   servo_180
-        ; Put servo_180's value in the right PWM register
-        movf    servo_180, 0
+        movwf   servov
+        ; Put servov's value in the right PWM register
+        banksel servov
+        movf    servov, 0
         movwf   temp
         lsrf    temp, 1
         lsrf    temp, 0
+        banksel CCPR1L
         movwf   CCPR1L
         bcf     CCP1CON, 4
         bcf     CCP1CON, 5
         movlw   0x03
-        andwf   servo_180, 0
+        banksel servov
+        andwf   servov, 0
         movwf   temp
         lslf    temp, 1
         lslf    temp, 1
         lslf    temp, 1
         lslf    temp, 0
+        banksel CCP1CON
         iorwf   CCP1CON, 1
         ; end
         banksel PIR1            ; timer 2 init and start
@@ -185,9 +188,9 @@ init_pwm:
         bsf     T2CON, 1
         bsf     T2CON, 2        ; Timer 2 on
         ; 6th  step (not mandatory)
-        ; btfss   PIR1, 1 ; clear flag after
-        ; goto    $-1
-        ; bcf     PIR1, 1
+        ;btfss   PIR1, 1        ; clear flag after
+        ;goto    $-1
+        ;bcf     PIR1, 1
         banksel TRISC
         clrf    TRISC
         return
@@ -196,8 +199,6 @@ init_pwm:
 ; Main code
 loop:   btfsc   ready, 0        ; Check ready every XX seconds
 	call    computation     ; computations for LDRs
-        ; btfsc   servo, 0      ; Check if servomotor has to move
-        ; call    pwm           ; turn servomotor
         goto    loop
 
 computation:
@@ -207,8 +208,8 @@ computation:
         call    ldr1            ; Get LDR value (up)
         call    difference_h    ; Get vertical servomotor's direction
         ; Horizontal (360) servomotor
-        ; call    ldr0            ; Get LDR value (left)
-        ; call    ldr1            ; Get LDR value (right)
+        ; call    ldr2            ; Get LDR value (left)
+        ; call    ldr3            ; Get LDR value (right)
         ; call    difference_h    ; Get horizontal servomotor's direction
         return
 
@@ -248,21 +249,29 @@ turn_right:
         banksel PORTB
         movlw   0xff
         movwf   PORTB
-        ; incf    servo_180, 1  ; REMOVE: empirical testing (maybe +5)
-        ; call    pwm
+        movlw   0x50
+        movwf   servov
+        call    pwm_right
+        ;movlw   0x05
+        ;addwf   servov, 1
         return
 
 turn_left:
         banksel PORTB
         movlw   0x00
         movwf   PORTB
-        ; decf    servo_180, 1 ; REMOVE: empirical testing (maybe -5)
-        ; call    pwm
+        movlw   0x50
+        movwf   servov
+        call    pwm_left
+        ;movlw   0x05
+        ;subwf   servov, 1
         return
 
 pwm:
         banksel CCP1CON
-        movf    servo_180, 0
+        movlw   0x30
+        movwf   servov
+        movf    servov, 0
         movwf   temp
         lsrf    temp, 1
         lsrf    temp, 0
@@ -270,15 +279,55 @@ pwm:
         bcf     CCP1CON, 4
         bcf     CCP1CON, 5
         movlw   0x03
-        andwf   servo_180, 0
+        andwf   servov, 0
         movwf   temp
         lslf    temp, 1
         lslf    temp, 1
         lslf    temp, 1
         lslf    temp, 0
         iorwf   CCP1CON, 1
-        banksel TRISC
-        clrf    TRISC
+        return
+
+pwm_right:
+        banksel CCP1CON
+        movlw   0x50
+        movwf   servov
+        movf    servov, 0
+        movwf   temp
+        lsrf    temp, 1
+        lsrf    temp, 0
+        movwf   CCPR1L
+        bcf     CCP1CON, 4
+        bcf     CCP1CON, 5
+        movlw   0x03
+        andwf   servov, 0
+        movwf   temp
+        lslf    temp, 1
+        lslf    temp, 1
+        lslf    temp, 1
+        lslf    temp, 0
+        iorwf   CCP1CON, 1
+        return
+
+pwm_left:
+        banksel CCP1CON
+        movlw   0x10
+        movwf   servov
+        movf    servov, 0
+        movwf   temp
+        lsrf    temp, 1
+        lsrf    temp, 0
+        movwf   CCPR1L
+        bcf     CCP1CON, 4
+        bcf     CCP1CON, 5
+        movlw   0x03
+        andwf   servov, 0
+        movwf   temp
+        lslf    temp, 1
+        lslf    temp, 1
+        lslf    temp, 1
+        lslf    temp, 0
+        iorwf   CCP1CON, 1
         return
 
 ; Utility functions
@@ -295,7 +344,7 @@ difference_l:
         movf    ldr0l, 0
         subwf   ldr1l
         btfsc   STATUS, 2       ; enter if Z = 1 (equal)
-        goto    turn_left       ; REMOVE: We shouldn't move here
+        goto    pwm             ; REMOVE: We shouldn't move here
         btfsc   STATUS, 0       ; enter if ldr0 > ldr1
         goto    turn_left
         goto    turn_right
@@ -315,15 +364,8 @@ delay_loop:
 
 ; Interrupt service routine
 isr:
-        btfsc   INTCON, 2
-        goto    t0_code
-        banksel PIR1
-        btfss   PIR1, 1
+        btfss   INTCON, 2
         retfie
-        goto    t2_code
-        retfie
-
-t0_code:
         incfsz  counter_l, f
         retfie
         incfsz  counter_h, f
@@ -334,15 +376,6 @@ t0_code:
         movwf   ready
         call    init_counter
         bcf     INTCON, 2
-        retfie
-
-t2_code:
-        banksel TRISC
-        clrf    TRISC
-        banksel PIR1
-        movlw   0x01
-        movwf   servo
-        bcf     PIR1, 1
         retfie
 
 	end	reset_vec
