@@ -28,7 +28,7 @@ CONFIG  BORV = LO             ; Brown-out Reset Voltage trip point low
 CONFIG  LPBOR = OFF           ; Low Power Brown-Out Reset disabled
 CONFIG  LVP = OFF             ; Low-Voltage Programming disabled
 
-PSECT udata_bank0
+PSECT udata_shr
 ready:                  ; semaphore used to know if the timer interrupt has occured
         DS      1
 counter_l:              ; last 8 bits of 24-bit counter 
@@ -57,7 +57,7 @@ ldr3h:                  ; upper ldr
         DS      1
 ldr3l:
         DS      1
-servov:              ; servo vertical
+servov:                 ; servo vertical
         DS      1
 temp:                   ; temporaty register
         DS      1
@@ -119,11 +119,10 @@ init_portb:
         return
 
 init_data:
-        banksel ready
         clrf    ready           ; clear ready flag
         call    init_counter
-        ;movlw   0x50            ; 
-        ;movwf   servov
+        movlw   0x30            ; initialized to a centered position
+        movwf   servov
         return
 
 init_counter:
@@ -135,7 +134,6 @@ init_counter:
         return
 
 init_timer_interrupt:
-        banksel OPTION_REG
         bsf     OPTION_REG, 1
         bsf     OPTION_REG, 2
         bcf     OPTION_REG, 0
@@ -145,7 +143,6 @@ init_timer_interrupt:
         return
 
 init_pwm:
-        ; 5-6 initialization steps page 228
         banksel PORTC
         clrf    PORTC
         banksel LATC
@@ -159,20 +156,14 @@ init_pwm:
         banksel CCP1CON
         bsf     CCP1CON, 2      ; pwm mode
         bsf     CCP1CON, 3
-        movlw   0x30            ; REMOVE: is it working without it (cfr init_data function assigning another value)
-        movwf   servov
-        ; Put servov's value in the right PWM register
-        banksel servov
         movf    servov, 0
         movwf   temp
         lsrf    temp, 1
         lsrf    temp, 0
-        banksel CCPR1L
         movwf   CCPR1L
         bcf     CCP1CON, 4
         bcf     CCP1CON, 5
         movlw   0x03
-        banksel servov
         andwf   servov, 0
         movwf   temp
         lslf    temp, 1
@@ -181,23 +172,18 @@ init_pwm:
         lslf    temp, 0
         banksel CCP1CON
         iorwf   CCP1CON, 1
-        ; end
         banksel PIR1            ; timer 2 init and start
         bcf     PIR1, 1
         bsf     T2CON, 0        ; prescaler de 1:64
         bsf     T2CON, 1
         bsf     T2CON, 2        ; Timer 2 on
-        ; 6th  step (not mandatory)
-        ;btfss   PIR1, 1        ; clear flag after
-        ;goto    $-1
-        ;bcf     PIR1, 1
         banksel TRISC
         clrf    TRISC
         return
 
-
 ; Main code
-loop:   btfsc   ready, 0        ; Check ready every XX seconds
+loop:   
+        btfsc   ready, 0        ; Check ready every XX seconds
 	call    computation     ; computations for LDRs
         goto    loop
 
@@ -207,6 +193,7 @@ computation:
         call    ldr0            ; Get LDR value (down)
         call    ldr1            ; Get LDR value (up)
         call    difference_h    ; Get vertical servomotor's direction
+        call    pwm
         ; Horizontal (360) servomotor
         ; call    ldr2            ; Get LDR value (left)
         ; call    ldr3            ; Get LDR value (right)
@@ -249,74 +236,38 @@ turn_right:
         banksel PORTB
         movlw   0xff
         movwf   PORTB
-        movlw   0x50
-        movwf   servov
-        call    pwm_right
         ;movlw   0x05
         ;addwf   servov, 1
+        movlw   0x10
+        movwf   servov
         return
 
 turn_left:
         banksel PORTB
         movlw   0x00
         movwf   PORTB
-        movlw   0x50
-        movwf   servov
-        call    pwm_left
         ;movlw   0x05
         ;subwf   servov, 1
+        movlw   0x50
+        movwf   servov
+        return
+
+turn_middle:
+        banksel PORTB
+        movlw   0xff
+        movwf   PORTB
+        ;movlw   0x05
+        ;subwf   servov, 1
+        movlw   0x30
+        movwf   servov
         return
 
 pwm:
-        banksel CCP1CON
-        movlw   0x30
-        movwf   servov
         movf    servov, 0
         movwf   temp
         lsrf    temp, 1
         lsrf    temp, 0
-        movwf   CCPR1L
-        bcf     CCP1CON, 4
-        bcf     CCP1CON, 5
-        movlw   0x03
-        andwf   servov, 0
-        movwf   temp
-        lslf    temp, 1
-        lslf    temp, 1
-        lslf    temp, 1
-        lslf    temp, 0
-        iorwf   CCP1CON, 1
-        return
-
-pwm_right:
         banksel CCP1CON
-        movlw   0x50
-        movwf   servov
-        movf    servov, 0
-        movwf   temp
-        lsrf    temp, 1
-        lsrf    temp, 0
-        movwf   CCPR1L
-        bcf     CCP1CON, 4
-        bcf     CCP1CON, 5
-        movlw   0x03
-        andwf   servov, 0
-        movwf   temp
-        lslf    temp, 1
-        lslf    temp, 1
-        lslf    temp, 1
-        lslf    temp, 0
-        iorwf   CCP1CON, 1
-        return
-
-pwm_left:
-        banksel CCP1CON
-        movlw   0x10
-        movwf   servov
-        movf    servov, 0
-        movwf   temp
-        lsrf    temp, 1
-        lsrf    temp, 0
         movwf   CCPR1L
         bcf     CCP1CON, 4
         bcf     CCP1CON, 5
@@ -339,15 +290,17 @@ difference_h:
         btfsc   STATUS, 0       ; enter if ldr0 > ldr1
         goto    turn_left
         goto    turn_right
+        return
         
 difference_l:
         movf    ldr0l, 0
         subwf   ldr1l
         btfsc   STATUS, 2       ; enter if Z = 1 (equal)
-        goto    pwm             ; REMOVE: We shouldn't move here
-        btfsc   STATUS, 0       ; enter if ldr0 > ldr1
+        goto    turn_middle
+        btfsc   STATUS, 0       ; enter if ldr0 > ldr1s
         goto    turn_left
         goto    turn_right
+        return
 
 delay:
         movlw   0xff
