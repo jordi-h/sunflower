@@ -31,12 +31,6 @@ CONFIG  LVP = OFF             ; Low-Voltage Programming disabled
 PSECT udata_shr
 ready:                  ; semaphore used to know if the timer interrupt has occured
         DS      1
-counter_l:              ; last 8 bits of 24-bit counter 
-        DS      1
-counter_h:              ; middle 8 bits of 24-bit counter
-        DS      1       
-counter_hh:             ; first 8 bits of 24-bit counter
-        DS      1
 delay_l:                ; last 8 bits of the acquisition delay needed after enabling the adc on a channel
         DS      1
 delay_h:                ; first 8 bits of the acquisition delay needed after enabling the adc on a channel
@@ -120,17 +114,8 @@ init_portb:
 
 init_data:
         clrf    ready           ; clear ready flag
-        call    init_counter
-        movlw   0x30            ; initialized to a centered position
-        movwf   servov
-        return
-
-init_counter:
-        movlw   0xff
-        movwf   counter_hh
-        movlw   0xff
-        movwf   counter_h
-        clrf    counter_l
+        movlw   0x30            
+        movwf   servov          ; initialized to a centered position
         return
 
 init_timer_interrupt:
@@ -181,7 +166,7 @@ init_pwm:
         clrf    TRISC
         return
 
-; Main code
+; main code
 loop:   
         btfsc   ready, 0        ; Check ready every XX seconds
 	call    computation     ; computations for LDRs
@@ -252,16 +237,6 @@ turn_left:
         movwf   servov
         return
 
-turn_middle:
-        banksel PORTB
-        movlw   0xff
-        movwf   PORTB
-        ;movlw   0x05
-        ;subwf   servov, 1
-        movlw   0x30
-        movwf   servov
-        return
-
 pwm:
         movf    servov, 0
         movwf   temp
@@ -296,7 +271,7 @@ difference_l:
         movf    ldr0l, 0
         subwf   ldr1l
         btfsc   STATUS, 2       ; enter if Z = 1 (equal)
-        goto    turn_middle
+        return
         btfsc   STATUS, 0       ; enter if ldr0 > ldr1s
         goto    turn_left
         goto    turn_right
@@ -319,15 +294,8 @@ delay_loop:
 isr:
         btfss   INTCON, 2
         retfie
-        incfsz  counter_l, f
-        retfie
-        incfsz  counter_h, f
-        retfie
-        incfsz  counter_hh, f
-        retfie
         movlw   0x01
         movwf   ready
-        call    init_counter
         bcf     INTCON, 2
         retfie
 
