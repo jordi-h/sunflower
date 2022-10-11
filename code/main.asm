@@ -117,9 +117,9 @@ init_portb:
 init_data:
         clrf    ready           ; clear ready flag
         movlw   0x30            
-        movwf   servoh          ; initialized to a centered position
+        movwf   servoh          ; initialize 360 servo to a centered position
         movlw   0x30
-        movwf   servov
+        movwf   servov          ; initialize 180 servo to a centered position
         return
 
 init_timer_interrupt:
@@ -142,6 +142,7 @@ init_pwm:
         banksel PR2
         movlw   0x9b
         movwf   PR2             ; pwm period (p.228) of 20ms
+        ; 360 servo
         banksel CCP1CON
         bsf     CCP1CON, 2      ; pwm mode
         bsf     CCP1CON, 3
@@ -161,6 +162,26 @@ init_pwm:
         lslf    temp, 0
         banksel CCP1CON
         iorwf   CCP1CON, 1
+        ; 180 servo
+        bsf     CCP2CON, 2      ; pwm mode
+        bsf     CCP2CON, 3
+        movf    servov, 0
+        movwf   temp
+        lsrf    temp, 1
+        lsrf    temp, 0
+        movwf   CCPR2L
+        bcf     CCP2CON, 4
+        bcf     CCP2CON, 5
+        movlw   0x03
+        andwf   servov, 0
+        movwf   temp
+        lslf    temp, 1
+        lslf    temp, 1
+        lslf    temp, 1
+        lslf    temp, 0
+        banksel CCP2CON
+        iorwf   CCP2CON, 1
+        ; configure and start time 2
         banksel PIR1            ; timer 2 init and start
         bcf     PIR1, 1
         bsf     T2CON, 0        ; prescaler de 1:64
@@ -179,14 +200,14 @@ loop:
 computation:
         clrf    ready
         ; Horizontal (360) servomotor
-        call    ldr0            ; Get LDR value (down)
-        call    ldr1            ; Get LDR value (up)
-        call    differenceH_360    ; Get vertical servomotor's direction
-        call    pwm
+        ; call    ldr0            ; Get LDR value (down)
+        ; call    ldr1            ; Get LDR value (up)
+        ; call    differenceH_360    ; Get vertical servomotor's direction
         ; Vertical (180) servomotor
-        ; call    ldr2            ; Get LDR value (left)
-        ; call    ldr3            ; Get LDR value (right)
-        ; call    differenceH_360    ; Get horizontal servomotor's direction
+        call    ldr2            ; Get LDR value (left)
+        call    ldr3            ; Get LDR value (right)
+        call    differenceH_180    ; Get horizontal servomotor's direction
+        call    pwm
         return
 
 ; Getters
@@ -220,6 +241,36 @@ ldr1:
         movwf   ldr1l
         return
 
+ldr2:
+        banksel ADCON0
+        movlw   0x89
+        movwf   ADCON0  ; ADC enabled on channel AN2 with 10-bit result
+        call    delay
+        bsf     ADCON0, 1
+        btfsc   ADCON0, 1
+        goto    $-1
+        banksel ADRESH
+        movf    ADRESH, 0
+        movwf   ldr2h
+        movf    ADRESL, 0
+        movwf   ldr2l
+        return
+
+ldr3:
+        banksel ADCON0
+        movlw   0x8d
+        movwf   ADCON0  ; ADC enabled on channel AN3 with 10-bit result
+        call    delay
+        bsf     ADCON0, 1
+        btfsc   ADCON0, 1
+        goto    $-1
+        banksel ADRESH
+        movf    ADRESH, 0
+        movwf   ldr3h
+        movf    ADRESL, 0
+        movwf   ldr3l
+        return
+
 ; Movers
 turn_right_360:
         banksel PORTB
@@ -245,7 +296,24 @@ stop:
         movwf   servoh
         return
 
+turn_right_180:
+        banksel PORTB
+        movlw   0xff
+        movwf   PORTB
+        movlw   0x10
+        movwf   servov
+        return
+
+turn_left_180:
+        banksel PORTB
+        movlw   0x00
+        movwf   PORTB
+        movlw   0x50
+        movwf   servov
+        return
+
 pwm:
+        ; 360 servo
         movf    servoh, 0
         movwf   temp
         lsrf    temp, 1
@@ -262,6 +330,23 @@ pwm:
         lslf    temp, 1
         lslf    temp, 0
         iorwf   CCP1CON, 1
+        ; 180 servo
+        movf    servov, 0
+        movwf   temp
+        lsrf    temp, 1
+        lsrf    temp, 0
+        banksel CCP2CON
+        movwf   CCPR2L
+        bcf     CCP2CON, 4
+        bcf     CCP2CON, 5
+        movlw   0x03
+        andwf   servov, 0
+        movwf   temp
+        lslf    temp, 1
+        lslf    temp, 1
+        lslf    temp, 1
+        lslf    temp, 0
+        iorwf   CCP2CON, 1
         return
 
 ; Utility functions
@@ -283,6 +368,26 @@ differenceL_360:
         btfsc   STATUS, 0       ; enter if ldr0 > ldr1s
         goto    turn_left_360
         goto    turn_right_360
+        return
+
+differenceH_180:
+        movf    ldr2h, 0
+        subwf   ldr3h
+        btfsc   STATUS, 2       ; enter if Z = 1 (equal)
+        goto    differenceL_180    ; Call differenceL_360 if equal
+        btfsc   STATUS, 0       ; enter if ldr0 > ldr1
+        goto    turn_left_180
+        goto    turn_right_180
+        return
+        
+differenceL_180:
+        movf    ldr2l, 0
+        subwf   ldr3l
+        btfsc   STATUS, 2       ; enter if Z = 1 (equal)
+        return
+        btfsc   STATUS, 0       ; enter if ldr0 > ldr1s
+        goto    turn_left_180
+        goto    turn_right_180
         return
 
 delay:
