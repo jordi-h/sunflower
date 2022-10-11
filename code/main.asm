@@ -200,9 +200,9 @@ loop:
 computation:
         clrf    ready
         ; Horizontal (360) servomotor
-        call    ldr0            ; Get LDR value (down)
-        call    ldr1            ; Get LDR value (up)
-        call    differenceH_360    ; Get vertical servomotor's direction
+        ;call    ldr0            ; Get LDR value (down)
+        ;call    ldr1            ; Get LDR value (up)
+        ;call    differenceH_360    ; Get vertical servomotor's direction
         ; Vertical (180) servomotor
         call    ldr2            ; Get LDR value (left)
         call    ldr3            ; Get LDR value (right)
@@ -301,7 +301,14 @@ turn_right_180:
         movlw   0xff
         movwf   PORTB
         movlw   0x10
-        movwf   servov
+        movwf   temp
+        movf    servov, 0
+        subwf   temp, 0
+        btfsc   STATUS, 0
+        return
+        decf    servov, 1
+        ;movlw   0x10
+        ;movwf   servov
         return
 
 turn_left_180:
@@ -309,7 +316,12 @@ turn_left_180:
         movlw   0x00
         movwf   PORTB
         movlw   0x50
-        movwf   servov
+        subwf   servov, 0
+        btfsc   STATUS, 0
+        return
+        incf    servov, 1
+        ;movlw   0x50
+        ;movwf   servov
         return
 
 pwm:
