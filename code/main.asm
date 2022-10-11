@@ -227,7 +227,7 @@ ldr0:
         movwf   ldr0h
         movf    ADRESL, 0
         movwf   ldr0l
-        bcf     ldr0l, 0
+        bcf     ldr0l, 0 ; lower the precision in order to avoid noise
         bcf     ldr0l, 1
         return
 
@@ -244,7 +244,7 @@ ldr1:
         movwf   ldr1h
         movf    ADRESL, 0
         movwf   ldr1l
-        bcf     ldr1l, 0
+        bcf     ldr1l, 0 ; lower the precision in order to avoid noise
         bcf     ldr1l, 1
         return
 
@@ -261,7 +261,7 @@ ldr2:
         movwf   ldr2h
         movf    ADRESL, 0
         movwf   ldr2l
-        bcf     ldr2l, 0
+        bcf     ldr2l, 0 ; lower the precision in order to avoid noise
         bcf     ldr2l, 1
         return
 
@@ -278,7 +278,7 @@ ldr3:
         movwf   ldr3h
         movf    ADRESL, 0
         movwf   ldr3l
-        bcf     ldr3l, 0
+        bcf     ldr3l, 0 ; lower the precision in order to avoid noise
         bcf     ldr3l, 1
         return
 
@@ -318,8 +318,6 @@ turn_right_180:
         btfsc   STATUS, 0
         return
         decf    servov, 1
-        ;movlw   0x10
-        ;movwf   servov
         return
 
 turn_left_180:
@@ -331,8 +329,6 @@ turn_left_180:
         btfsc   STATUS, 0
         return
         incf    servov, 1
-        ;movlw   0x50
-        ;movwf   servov
         return
 
 pwm:
