@@ -57,6 +57,8 @@ servov:                 ; vertical servo
         DS      1
 temp:                   ; temporaty register
         DS      1
+counter:
+        DS      1
 
 PSECT reset_vec, class = CODE, delta = 2  
 reset_vec: 
@@ -120,6 +122,7 @@ init_data:
         movwf   servoh          ; initialize 360 servo to a centered position
         movlw   0x30
         movwf   servov          ; initialize 180 servo to a centered position
+        clrf    counter
         return
 
 init_timer_interrupt:
@@ -200,9 +203,9 @@ loop:
 computation:
         clrf    ready
         ; Horizontal (360) servomotor
-        ;call    ldr0            ; Get LDR value (down)
-        ;call    ldr1            ; Get LDR value (up)
-        ;call    differenceH_360    ; Get vertical servomotor's direction
+        call    ldr0            ; Get LDR value (down)
+        call    ldr1            ; Get LDR value (up)
+        call    differenceH_360    ; Get vertical servomotor's direction
         ; Vertical (180) servomotor
         call    ldr2            ; Get LDR value (left)
         call    ldr3            ; Get LDR value (right)
@@ -224,6 +227,8 @@ ldr0:
         movwf   ldr0h
         movf    ADRESL, 0
         movwf   ldr0l
+        bcf     ldr0l, 0
+        bcf     ldr0l, 1
         return
 
 ldr1:
@@ -239,6 +244,8 @@ ldr1:
         movwf   ldr1h
         movf    ADRESL, 0
         movwf   ldr1l
+        bcf     ldr1l, 0
+        bcf     ldr1l, 1
         return
 
 ldr2:
@@ -254,6 +261,8 @@ ldr2:
         movwf   ldr2h
         movf    ADRESL, 0
         movwf   ldr2l
+        bcf     ldr2l, 0
+        bcf     ldr2l, 1
         return
 
 ldr3:
@@ -269,6 +278,8 @@ ldr3:
         movwf   ldr3h
         movf    ADRESL, 0
         movwf   ldr3l
+        bcf     ldr3l, 0
+        bcf     ldr3l, 1
         return
 
 ; Movers
@@ -284,7 +295,7 @@ turn_left_360:
         banksel PORTB
         movlw   0x00
         movwf   PORTB
-        movlw   0x31
+        movlw   0x30
         movwf   servoh
         return
 
@@ -292,14 +303,14 @@ stop:
         banksel PORTB
         movlw   0x00
         movwf   PORTB
-        movlw   0x30
+        movlw   0x2f
         movwf   servoh
         return
 
 turn_right_180:
-        banksel PORTB
-        movlw   0xff
-        movwf   PORTB
+        ;banksel PORTB
+        ;movlw   0xff
+        ;movwf   PORTB
         movlw   0x10
         movwf   temp
         movf    servov, 0
@@ -312,9 +323,9 @@ turn_right_180:
         return
 
 turn_left_180:
-        banksel PORTB
-        movlw   0x00
-        movwf   PORTB
+        ;banksel PORTB
+        ;movlw   0x00
+        ;movwf   PORTB
         movlw   0x50
         subwf   servov, 0
         btfsc   STATUS, 0
@@ -405,7 +416,7 @@ differenceL_180:
 delay:
         movlw   0xff
         movwf   delay_h
-        movlw   0xa0
+        movlw   0xe9
         movwf   delay_l
 
 delay_loop:
@@ -418,6 +429,8 @@ delay_loop:
 ; Interrupt service routine
 isr:
         btfss   INTCON, 2
+        retfie
+        incfsz  counter, f
         retfie
         movlw   0x01
         movwf   ready
