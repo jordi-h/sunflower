@@ -51,7 +51,9 @@ ldr3h:                  ; upper ldr
         DS      1
 ldr3l:
         DS      1
-servov:                 ; servo vertical
+servoh:                 ; horizontal servo
+        DS      1
+servov:                 ; vertical servo
         DS      1
 temp:                   ; temporaty register
         DS      1
@@ -115,7 +117,9 @@ init_portb:
 init_data:
         clrf    ready           ; clear ready flag
         movlw   0x30            
-        movwf   servov          ; initialized to a centered position
+        movwf   servoh          ; initialized to a centered position
+        movlw   0x30
+        movwf   servov
         return
 
 init_timer_interrupt:
@@ -141,7 +145,7 @@ init_pwm:
         banksel CCP1CON
         bsf     CCP1CON, 2      ; pwm mode
         bsf     CCP1CON, 3
-        movf    servov, 0
+        movf    servoh, 0
         movwf   temp
         lsrf    temp, 1
         lsrf    temp, 0
@@ -149,7 +153,7 @@ init_pwm:
         bcf     CCP1CON, 4
         bcf     CCP1CON, 5
         movlw   0x03
-        andwf   servov, 0
+        andwf   servoh, 0
         movwf   temp
         lslf    temp, 1
         lslf    temp, 1
@@ -174,15 +178,15 @@ loop:
 
 computation:
         clrf    ready
-        ; Vertical (180) servomotor
+        ; Horizontal (360) servomotor
         call    ldr0            ; Get LDR value (down)
         call    ldr1            ; Get LDR value (up)
-        call    difference_h    ; Get vertical servomotor's direction
+        call    differenceH_360    ; Get vertical servomotor's direction
         call    pwm
-        ; Horizontal (360) servomotor
+        ; Vertical (180) servomotor
         ; call    ldr2            ; Get LDR value (left)
         ; call    ldr3            ; Get LDR value (right)
-        ; call    difference_h    ; Get horizontal servomotor's direction
+        ; call    differenceH_360    ; Get horizontal servomotor's direction
         return
 
 ; Getters
@@ -217,28 +221,32 @@ ldr1:
         return
 
 ; Movers
-turn_right:
+turn_right_360:
         banksel PORTB
         movlw   0xff
         movwf   PORTB
-        ;movlw   0x05
-        ;addwf   servov, 1
-        movlw   0x10
-        movwf   servov
+        movlw   0x2d
+        movwf   servoh
         return
 
-turn_left:
+turn_left_360:
         banksel PORTB
         movlw   0x00
         movwf   PORTB
-        ;movlw   0x05
-        ;subwf   servov, 1
-        movlw   0x50
-        movwf   servov
+        movlw   0x31
+        movwf   servoh
+        return
+
+stop:
+        banksel PORTB
+        movlw   0x00
+        movwf   PORTB
+        movlw   0x30
+        movwf   servoh
         return
 
 pwm:
-        movf    servov, 0
+        movf    servoh, 0
         movwf   temp
         lsrf    temp, 1
         lsrf    temp, 0
@@ -247,7 +255,7 @@ pwm:
         bcf     CCP1CON, 4
         bcf     CCP1CON, 5
         movlw   0x03
-        andwf   servov, 0
+        andwf   servoh, 0
         movwf   temp
         lslf    temp, 1
         lslf    temp, 1
@@ -257,24 +265,24 @@ pwm:
         return
 
 ; Utility functions
-difference_h:
+differenceH_360:
         movf    ldr0h, 0
         subwf   ldr1h
         btfsc   STATUS, 2       ; enter if Z = 1 (equal)
-        goto    difference_l    ; Call difference_l if equal
+        goto    differenceL_360    ; Call differenceL_360 if equal
         btfsc   STATUS, 0       ; enter if ldr0 > ldr1
-        goto    turn_left
-        goto    turn_right
+        goto    turn_left_360
+        goto    turn_right_360
         return
         
-difference_l:
+differenceL_360:
         movf    ldr0l, 0
         subwf   ldr1l
         btfsc   STATUS, 2       ; enter if Z = 1 (equal)
-        return
+        goto    stop
         btfsc   STATUS, 0       ; enter if ldr0 > ldr1s
-        goto    turn_left
-        goto    turn_right
+        goto    turn_left_360
+        goto    turn_right_360
         return
 
 delay:
