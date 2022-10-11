@@ -200,9 +200,9 @@ loop:
 computation:
         clrf    ready
         ; Horizontal (360) servomotor
-        ; call    ldr0            ; Get LDR value (down)
-        ; call    ldr1            ; Get LDR value (up)
-        ; call    differenceH_360    ; Get vertical servomotor's direction
+        call    ldr0            ; Get LDR value (down)
+        call    ldr1            ; Get LDR value (up)
+        call    differenceH_360    ; Get vertical servomotor's direction
         ; Vertical (180) servomotor
         call    ldr2            ; Get LDR value (left)
         call    ldr3            ; Get LDR value (right)
@@ -393,7 +393,7 @@ differenceL_180:
 delay:
         movlw   0xff
         movwf   delay_h
-        movlw   0xff
+        movlw   0xa0
         movwf   delay_l
 
 delay_loop:
