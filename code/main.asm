@@ -28,9 +28,9 @@ CONFIG  LPBOR = OFF     ; Low Power Brown-Out Reset disabled
 CONFIG  LVP = OFF       ; Low-Voltage Programming disabled
 
 PSECT udata_shr
-ready:                  ; semaphore used to know if the timer interrupt has occured
+ready:                  ; boolean used to know if the timer interrupt has occured
         DS      1
-delayc:                ; The acquisition delay needed after enabling the adc on a channel
+delayc:                 ; The acquisition delay needed after enabling the adc on a channel
         DS      1
 ldr0h:                  ; left ldr
         DS      1
@@ -54,9 +54,9 @@ servov:                 ; vertical servo
         DS      1
 temp:                   ; temporary register
         DS      1
-counter_l:                ; interrupt counter (LSB) th slow the system a bit down
+counter_l:              ; interrupt counter (LSB) th slow the system a bit down
         DS      1
-counter_h:                ; interrupt counter (MSB) th slow the system a bit down
+counter_h:              ; interrupt counter (MSB) th slow the system a bit down
         DS      1
 
 PSECT reset_vec, class = CODE, delta = 2  
@@ -112,7 +112,7 @@ init_portb:
         banksel LATB
         clrf    LATB
         banksel ANSELB
-        clrf    ANSELB  ; set RB<0 to digital
+        clrf    ANSELB  ; set RB0 to digital
         banksel TRISB
         clrf    TRISB   ; set RB0 to output
         return
