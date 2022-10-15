@@ -30,9 +30,7 @@ CONFIG  LVP = OFF       ; Low-Voltage Programming disabled
 PSECT udata_shr
 ready:                  ; semaphore used to know if the timer interrupt has occured
         DS      1
-delay_l:                ; last 8 bits of the acquisition delay needed after enabling the adc on a channel
-        DS      1
-delay_h:                ; first 8 bits of the acquisition delay needed after enabling the adc on a channel
+delayc:                ; The acquisition delay needed after enabling the adc on a channel
         DS      1
 ldr0h:                  ; left ldr
         DS      1
@@ -56,7 +54,9 @@ servov:                 ; vertical servo
         DS      1
 temp:                   ; temporary register
         DS      1
-counter:                ; interrupt counter th slow the system a bit down
+counter_l:                ; interrupt counter (LSB) th slow the system a bit down
+        DS      1
+counter_h:                ; interrupt counter (MSB) th slow the system a bit down
         DS      1
 
 PSECT reset_vec, class = CODE, delta = 2  
@@ -119,11 +119,13 @@ init_portb:
 
 init_data:
         clrf    ready   ; clear ready flag
-        movlw   0x30            
+        movlw   0x2f            
         movwf   servoh  ; initialize 360 servo to a centered position
-        movlw   0x30
+        movlw   0x25
         movwf   servov  ; initialize 180 servo to a centered position
-        clrf    counter
+        clrf    counter_l
+        movlw   0xfd
+        movwf   counter_h       ; initialise interrupt counter
         return
 
 ; Initialise the timer 0 for interrupts
@@ -354,7 +356,7 @@ stop:
 
 ; compute vertical servo new position
 turn_left_180:
-        movlw   0x50    ; far left
+        movlw   0x30    ; up
         subwf   servov, 0
         btfsc   STATUS, 0
         return
@@ -362,7 +364,7 @@ turn_left_180:
         return
 
 turn_right_180:
-        movlw   0x10    ; far right
+        movlw   0x20    ; down
         movwf   temp
         movf    servov, 0
         subwf   temp, 0
@@ -411,15 +413,11 @@ pwm:
 
 ; Acquisition delay after ADC channel switch
 delay:
-        movlw   0xff
-        movwf   delay_h
         movlw   0xe9
-        movwf   delay_l
+        movwf   delayc
 
 delay_loop:
-        incfsz  delay_l, f
-        goto    delay_loop
-        incfsz  delay_h, f
+        incfsz  delayc, f
         goto    delay_loop
         return
 
@@ -427,8 +425,13 @@ delay_loop:
 isr:
         btfss   INTCON, 2
         retfie
-        incfsz  counter, f
+        incfsz  counter_l, f
         retfie
+        incfsz  counter_h, f
+        retfie
+        clrf    counter_l
+        movlw   0xfd
+        movwf   counter_h
         movlw   0x01
         movwf   ready
         bcf     INTCON, 2
