@@ -1,0 +1,11 @@
+FILE_TYPE = MULTI_PHYS_TABLE;
+
+PART 'PIC16F1789_I_P'
+CLASS = IC
+{========================================================================================}
+:"MANUFACTURER_NAME", "MANUFACTURER_PART_NUMBER"= "PART_NUMBER", "JEDEC_TYPE", "PACK_TYPE", "MOUSER_PART_NUMBER", "MOUSER_PRICE/STOCK", "ARROW_PART_NUMBER", "ARROW_PRICE/STOCK", "DESCRIPTION", "DATASHEET";
+{========================================================================================}
+ "Microchip", "PIC16F1789-I/P" (!) = "", "PIC16F1789-I_P", "Other", "579-PIC16F1789-I/P", "https://www.mouser.co.uk/ProductDetail/Microchip-Technology-Atmel/PIC16F1789-I-P?qs=7DhvGWG6CtcNtC1kjOxGJQ%3D%3D", "PIC16F1789-I/P", "https://www.arrow.com/en/products/pic16f1789-ip/microchip-technology?region=nac", "PIC16F1789-I/P, 8 bit PIC Microcontroller 32MHz 16384 words Flash, 2048 B RAM, USB I2C LIN 40-Pin PDIP", "https://datasheet.datasheetarchive.com/originals/distributors/Datasheets-DGA25/1726709.pdf"
+END_PART
+
+END.
